@@ -1,0 +1,69 @@
+import numpy as np
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+
+# Generate a sample dataset
+X, y = make_classification(n_samples=1000, n_features=20, n_classes=2, random_state=42)
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Jaya algorithm for feature selection
+class JayaAlgorithm:
+    def __init__(self, fitness_function, num_features, X_train, X_test, y_train, y_test):
+        self.fitness_function = fitness_function
+        self.num_features = num_features
+        self.X_train = X_train
+        self.X_test = X_test
+        self.y_train = y_train
+        self.y_test = y_test
+
+    def run(self, population_size, max_iterations):
+        # Initialize population randomly as float64
+        population = np.random.rand(population_size, self.num_features)
+
+        for iteration in range(max_iterations):
+            # Calculate fitness for each solution in the population
+            fitness_values = [self.fitness_function(features, self.X_train, self.X_test, self.y_train, self.y_test)
+                              for features in population]
+
+            # Update population using Jaya algorithm
+            best_solution = population[np.argmax(fitness_values)]
+            worst_solution = population[np.argmin(fitness_values)]
+
+            for i in range(population_size):
+                rand = np.random.rand(self.num_features)
+                population[i] += rand * (best_solution - np.abs(population[i])) - rand * (worst_solution - np.abs(population[i]))
+
+            # Clip values to ensure they are within the valid range [0, 1]
+            population = np.clip(population, 0, 1)
+
+        # Return the best solution
+        best_solution = population[np.argmax(fitness_values)]
+        return best_solution
+
+# Define a fitness function for feature selection
+def fitness(features, X_train, X_test, y_train, y_test):
+    selected_features = X_train[:, features.astype(bool)]
+    clf = RandomForestClassifier(random_state=42)
+    clf.fit(selected_features, y_train)
+    y_pred = clf.predict(X_test[:, features.astype(bool)])
+    return accuracy_score(y_test, y_pred)
+
+# Define the number of features to select
+num_features = X.shape[1]
+
+# Define the Jaya algorithm parameters
+population_size = 10
+max_iterations = 50
+
+# Initialize the Jaya algorithm
+jaya = JayaAlgorithm(fitness, num_features, X_train, X_test, y_train, y_test)
+
+# Run the Jaya algorithm
+selected_features = jaya.run(population_size, max_iterations)
+
+# Print the selected features
+print("Selected features:", selected_features)
